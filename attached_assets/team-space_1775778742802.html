@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Team Space – AI Orchestrated Workspace</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-page: #ffffff;
+    --bg-chip: #e7e9ee;
+    --card-critical-bg: rgba(219,112,123,0.23);
+    --card-important-bg: rgba(230,130,0,0.06);
+    --card-light-bg: #eef0f7;
+    --card-white-bg: #ffffff;
+    --text-primary: rgba(0,0,0,0.95);
+    --text-secondary: rgba(0,0,0,0.6);
+    --radius-panel: 24px;
+    --radius-card: 16px;
+    --radius-chip: 8px;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    font-family: 'Inter', sans-serif;
+    background: var(--bg-page);
+    overflow-x: auto;
+  }
+
+  /* ════════════════════════════════════════
+     TEAM VIEW
+  ════════════════════════════════════════ */
+  .workspace {
+    position: relative;
+    width: 1728px;
+    min-height: 100vh;
+    background: var(--bg-page);
+    padding-bottom: 80px;
+  }
+
+  /* Top bar — fixed so title + filters stay in place on scroll */
+  .top-bar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    pointer-events: none;
+  }
+  .top-bar::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(to bottom, #ffffff 70%, transparent);
+    pointer-events: none;
+  }
+  .top-bar-inner {
+    position: relative;
+    width: 1278px; margin: 0 auto;
+    padding-top: 120px;
+    display: flex; flex-direction: column; gap: 20px;
+    pointer-events: auto;
+  }
+  .page-title {
+    font-weight: 500; font-size: 24px; line-height: 21px;
+    color: var(--text-primary);
+  }
+  /* Team list view — filter row */
+  .tv-filters { display: flex; gap: 20px; align-items: center; }
+  .tv-filter-btn {
+    display: flex; align-items: center; gap: 4px;
+    background: none; border: none; cursor: pointer;
+    font-size: 16px; font-family: 'Inter', sans-serif;
+    color: #000; letter-spacing: -0.48px; padding: 0;
+  }
+  .tv-filter-btn svg { width: 20px; height: 20px; opacity: 0.6; }
+
+  /* Avatar group (removed from new design, kept for compat) */
+  .avatar-group { display: none; }
+
+  /* Summary card — fixed top-right */
+
+  /* Panel grid */
+  .daily-briefing {
+    position: absolute; top: 235px; left: 0; right: 0; height: 783px;
+    padding: 0 24px; display: flex; gap: 24px; align-items: stretch;
+  }
+  .member-col {
+    flex: 1 0 0; min-width: 0;
+    background: rgba(255,255,255,0.1);
+    border-radius: var(--radius-panel); overflow: hidden;
+    box-shadow: 0px 8px 40px rgba(189,195,214,0.4);
+    display: flex; flex-direction: column;
+  }
+  /* Me column — pinned at left, 32px gap to next card */
+  .member-col[data-member="0"] {
+    position: sticky; left: 24px; z-index: 10;
+    flex-shrink: 0; margin-right: 8px;
+    box-shadow: 0px 8px 40px rgba(189,195,214,0.4),
+                6px 0 20px rgba(0,0,0,0.06);
+  }
+  .col-header {
+    background: #fff; padding: 24px 24px 20px;
+    display: flex; flex-direction: column; gap: 12px;
+    flex-shrink: 0; position: sticky; top: 0; z-index: 2;
+  }
+  .col-header-top {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .employee-chip {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--bg-chip); border-radius: var(--radius-chip);
+    padding: 4px 8px 4px 4px;
+  }
+  .chip-avatar {
+    width: 20px; height: 20px; border-radius: 7.2px;
+    flex-shrink: 0; overflow: hidden; object-fit: cover;
+  }
+  .chip-name {
+    font-size: 14px; font-weight: 500; color: var(--text-primary);
+    letter-spacing: -0.14px; text-decoration: underline;
+    text-decoration-style: dotted; white-space: nowrap;
+  }
+  /* Employee meta info below chip */
+  .col-employee-info {
+    padding-left: 29px;
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .col-employee-info span {
+    font-size: 14px; font-weight: 400; line-height: 18px;
+    color: var(--text-secondary); letter-spacing: -0.14px; white-space: nowrap;
+  }
+  .col-expand {
+    width: 24px; height: 24px; flex-shrink: 0; opacity: 0.35;
+    cursor: pointer; background: none; border: none; padding: 0;
+    transition: opacity 0.15s;
+  }
+  .col-expand:hover { opacity: 0.8; }
+  .col-expand svg { width: 100%; height: 100%; }
+
+  .card-list {
+    background: #fff; flex: 1 0 0; overflow-y: auto;
+    padding: 8px 24px 32px; display: flex; flex-direction: column; gap: 8px; z-index: 1;
+  }
+  .card-list::-webkit-scrollbar { width: 4px; }
+  .card-list::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 4px; }
+
+  /* Compact briefing card */
+  .bcard {
+    border-radius: var(--radius-card); padding: 20px 20px 24px;
+    display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;
+  }
+  .bcard-critical  { background: var(--card-critical-bg); }
+  .bcard-important { background: var(--card-important-bg); }
+  .bcard-headsup   { background: var(--card-white-bg); border: 1px solid rgba(0,0,0,0.09); }
+  .bcard-light     { background: var(--card-light-bg); }
+  .bcard-ai        { background: linear-gradient(135deg, #5F249F 0%, #3d1a7a 100%); }
+
+  /* Category row with dot indicator */
+  .bcard-cat-row { display: flex; align-items: center; gap: 7.68px; }
+  .bcard-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .bcard-critical  .bcard-dot { background: #C14E5C; }
+  .bcard-important .bcard-dot { background: #D08010; }
+  .bcard-headsup   .bcard-dot { background: #2B4EAA; }
+  .bcard-light     .bcard-dot { background: #8892B4; }
+  .bcard-ai        .bcard-dot { background: rgba(255,255,255,0.6); }
+
+  .bcard-category {
+    font-size: 10.24px; font-weight: 400; line-height: normal;
+    white-space: nowrap; color: var(--text-secondary);
+  }
+  .bcard-ai .bcard-category { color: rgba(255,255,255,0.75); }
+
+  .bcard-copy {
+    font-size: 12.8px; font-weight: 500; letter-spacing: -0.128px; line-height: 1.4;
+    color: var(--text-primary);
+  }
+  .bcard-ai .bcard-copy { color: #fff; }
+  .bcard-copy u { text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 2px; }
+
+  /* Ask bar — matches Focused list view floating style */
+  .ask-bar {
+    position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 12px; align-items: center;
+    z-index: 150;
+    filter: drop-shadow(0px 8px 40px rgba(0,0,0,0.3));
+  }
+
+  /* Avatar colors */
+  .av-me     { background: #c4cfe8; }
+  .av-tom    { background: #b8d4c8; }
+  .av-amanda { background: #d4c8e8; }
+  .av-jamie  { background: #e8c8c4; }
+  .av-mark   { background: #c8d8e8; }
+
+  /* ════════════════════════════════════════
+     FOCUSED VIEW OVERLAY
+  ════════════════════════════════════════ */
+  #focused-view {
+    display: none;
+    position: fixed; inset: 0; z-index: 300;
+    background: #fff;
+    overflow: hidden;
+  }
+  #focused-view.visible { display: flex; flex-direction: column; }
+
+  /* Greeting header */
+  .fv-header {
+    display: flex; align-items: center; gap: 20px;
+    padding: 40px 180px 0;
+    flex-shrink: 0;
+  }
+  .fv-avatar-lg {
+    width: 72px; height: 72px; border-radius: 50%;
+    overflow: hidden; flex-shrink: 0;
+  }
+  .fv-greeting-text { display: flex; flex-direction: column; gap: 2px; }
+  .fv-hi {
+    font-family: 'Inter', sans-serif; font-weight: 600;
+    font-size: 28px; line-height: 1.2; color: rgba(0,0,0,0.95);
+    letter-spacing: -0.4px;
+  }
+  .fv-sub {
+    font-family: 'Inter', sans-serif; font-weight: 400;
+    font-size: 14px; color: rgba(0,0,0,0.5); letter-spacing: -0.1px;
+  }
+
+  /* Filter bar */
+  .fv-filters {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 24px 180px 16px;
+    flex-shrink: 0;
+  }
+  .fv-filter-pills { display: flex; gap: 8px; }
+  .fv-pill {
+    display: flex; align-items: center; gap: 6px;
+    background: #fff; border: none; border-radius: 50px;
+    padding: 8px 14px; font-size: 16px; font-family: 'Inter', sans-serif;
+    color: #000; letter-spacing: -0.48px; cursor: pointer;
+    white-space: nowrap;
+  }
+  .fv-pill svg { width: 20px; height: 20px; opacity: 0.5; transition: transform 0.2s; }
+  .fv-pill.open svg { transform: rotate(180deg); }
+  /* .fv-pill.active intentionally unstyled — button color unchanged after selection */
+
+  .fv-dropdown-wrap { position: relative; }
+  .fv-dropdown {
+    position: absolute; top: calc(100% + 8px); left: 0;
+    background: #fff; border-radius: 20px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.13), 0 2px 8px rgba(0,0,0,0.07);
+    padding: 10px; min-width: 320px; z-index: 1000;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .fv-dd-chip {
+    display: flex; align-items: center; justify-content: space-between;
+    background: transparent; border-radius: 50px;
+    padding: 10px 18px; font-size: 15px; font-weight: 400;
+    font-family: 'Inter', sans-serif; color: #000;
+    cursor: pointer; border: none; text-align: left; width: 100%;
+    letter-spacing: -0.3px; transition: background 0.15s;
+  }
+  .fv-dd-chip:hover { background: rgba(34,43,75,0.06); }
+  .fv-dd-chip.selected { background: rgba(34,43,75,0.1); color: #000; }
+  .fv-dd-chip .dd-count { opacity: 0.55; font-weight: 500; }
+  .fv-dd-chip.selected .dd-count { opacity: 0.55; }
+
+  .fv-dd-urg-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; border-radius: 12px;
+    font-size: 15px; font-family: 'Inter', sans-serif; color: #000;
+    cursor: pointer; border: none; background: transparent;
+    text-align: left; width: 100%; transition: background 0.15s;
+    letter-spacing: -0.3px;
+  }
+  .fv-dd-urg-item:hover { background: rgba(34,43,75,0.06); }
+  .fv-dd-urg-item.selected { background: rgba(34,43,75,0.1); }
+  .fv-dd-swatch { width: 22px; height: 22px; border-radius: 5px; flex-shrink: 0; }
+  .fv-dd-urg-count { margin-left: auto; opacity: 0.45; font-size: 14px; }
+
+  .fv-add { display: none; }
+  .fv-header-actions { display: flex; gap: 24px; align-items: center; }
+  .fv-icon-action {
+    width: 24px; height: 24px; border: none; background: none;
+    cursor: pointer; padding: 0; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .fv-icon-action svg { width: 24px; height: 24px; display: block; }
+  /* Toggle pill */
+  .fv-toggle-pill {
+    display: flex; align-items: center; flex-shrink: 0;
+    width: 91px; height: 48px; padding: 3.5px;
+    background: rgba(255,255,255,0.9); border-radius: 34.5px;
+    box-shadow: 0px 8px 40px 0px rgba(189,195,214,0.4);
+  }
+  .fv-toggle-seg {
+    flex: 1; height: 100%; border: none; background: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .fv-toggle-seg:first-child {
+    background: rgba(245,245,245,0.1);
+    border-right: 0.7px solid rgba(0,0,0,0.1);
+    border-radius: 31px 0 0 31px;
+  }
+  .fv-toggle-seg:last-child { border-radius: 0 31px 31px 0; }
+  .fv-toggle-seg svg { width: 20px; height: 20px; display: block; }
+
+  /* Scrollable card column */
+  .fv-cards-wrap {
+    flex: 1; overflow-y: auto; padding: 8px 180px 200px;
+  }
+  .fv-cards-wrap::-webkit-scrollbar { width: 6px; }
+  .fv-cards-wrap::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 4px; }
+  .fv-cards { display: flex; flex-direction: column; gap: 8px; }
+
+  /* Expanded briefing card */
+  .fv-card {
+    border-radius: 20px; padding: 20px 24px;
+    display: flex; flex-direction: column; gap: 10px; flex-shrink: 0;
+  }
+  .fv-card-critical  { background: rgba(219,112,123,0.18); }
+  .fv-card-important { background: rgba(230,130,0,0.07); }
+  .fv-card-navy      { background: rgba(71,102,255,0.07); }
+  .fv-card-light     { background: #eef0f7; }
+
+  /* Category row: dot + label */
+  .fv-card-category {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 13px; font-weight: 400; color: rgba(0,0,0,0.55);
+    line-height: 1; white-space: nowrap;
+  }
+  .fv-cat-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .fv-card-critical .fv-cat-dot  { background: #e80d24; }
+  .fv-card-important .fv-cat-dot { background: #e68200; }
+  .fv-card-navy .fv-cat-dot      { background: #4766ff; }
+  .fv-card-light .fv-cat-dot     { background: #8892B4; }
+
+  .fv-card-body { display: flex; align-items: center; gap: 24px; }
+  .fv-card-copy {
+    flex: 1 0 0; min-width: 0; font-size: 16px; font-weight: 400;
+    line-height: 1.5; letter-spacing: -0.1px; color: rgba(0,0,0,0.9);
+  }
+  .fv-card-copy u { font-weight: 600; text-decoration: none; }
+  .fv-card-copy .light { font-weight: 400; color: rgba(0,0,0,0.65); }
+
+  .fv-card-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+  .btn-secondary {
+    background: rgba(255,255,255,0.7); border: none; border-radius: 60px;
+    padding: 8px 18px; font-family: 'Inter', sans-serif; font-weight: 500;
+    font-size: 14px; color: rgba(0,0,0,0.75); cursor: pointer; white-space: nowrap;
+    letter-spacing: -0.2px;
+  }
+  .btn-primary {
+    background: #fff; border: none; border-radius: 60px;
+    padding: 8px 18px; font-family: 'Inter', sans-serif; font-weight: 500;
+    font-size: 14px; color: rgba(0,0,0,0.9); cursor: pointer; white-space: nowrap;
+    letter-spacing: -0.2px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+  }
+  .btn-secondary:hover { background: rgba(255,255,255,0.9); }
+  .btn-primary:hover   { box-shadow: 0 2px 8px rgba(0,0,0,0.16); }
+
+  /* Prev / Next navigation arrows */
+  .nav-arrow {
+    position: fixed; top: 50%; transform: translateY(-50%);
+    width: 60px; height: 60px; border-radius: 50%;
+    background: rgba(255,255,255,0.8); border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 400;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    transition: background 0.15s;
+  }
+  .nav-arrow:hover { background: rgba(255,255,255,1); }
+  .nav-arrow svg { width: 32px; height: 32px; }
+  .nav-prev { left: 40px; }
+  .nav-next { right: 24px; }
+
+  /* Frosted bottom gradient */
+  .fv-bottom-blur {
+    position: fixed; bottom: 0; left: 0; right: 0; height: 196px;
+    background: linear-gradient(to bottom, rgba(239,241,248,0) 0%, rgba(239,241,248,0.95) 60%, rgba(239,241,248,1) 100%);
+    pointer-events: none; z-index: 350;
+  }
+
+  /* ── Canvas pan ── */
+  .fv-canvas {
+    flex: 1; overflow: hidden; position: relative;
+    cursor: grab; min-height: 0;
+  }
+  .fv-canvas.dragging { cursor: grabbing; }
+  .fv-track {
+    display: flex; height: 100%;
+    will-change: transform;
+    user-select: none;
+  }
+  .fv-slide {
+    flex: 0 0 100vw; width: 100vw; height: 100%;
+    overflow-y: auto; overflow-x: hidden;
+    padding: 0 180px 240px;
+  }
+  .fv-slide::-webkit-scrollbar { width: 0; }
+  /* Prevent slide content from initiating drag steal */
+  .fv-slide .fv-cards { pointer-events: none; }
+  .fv-canvas.dragging .fv-slide { pointer-events: none; }
+  .fv-slide .fv-card-actions button { pointer-events: auto; }
+  .fv-slide .fv-pill, .fv-slide .fv-add { pointer-events: auto; }
+
+  /* Member indicator dots */
+  .fv-dots {
+    position: fixed; bottom: 130px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 8px; align-items: center; z-index: 410;
+  }
+  .fv-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: rgba(0,0,0,0.2); transition: all 0.25s;
+  }
+  .fv-dot.active {
+    width: 20px; border-radius: 3px; background: rgba(0,0,0,0.5);
+  }
+
+  /* Focused ask-anything bar */
+  .fv-ask-bar {
+    position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 12px; align-items: center;
+    z-index: 400;
+    filter: drop-shadow(0px 8px 40px rgba(0,0,0,0.3));
+  }
+  .fv-prompt-field {
+    background: rgba(255,255,255,0.85); backdrop-filter: blur(10px);
+    border-radius: 24px; height: 62px; width: 500px;
+    display: flex; align-items: center; gap: 4px;
+    padding: 4px 12px 4px 16px;
+  }
+  .fv-prompt-inner { flex: 1; display: flex; align-items: center; gap: 11px; }
+  .fv-bryte-icon {
+    width: 32px; height: 32px; background: linear-gradient(135deg,#a855f7,#5F249F);
+    border-radius: 50%; flex-shrink: 0; display: flex;
+    align-items: center; justify-content: center;
+  }
+  .fv-bryte-icon svg { width: 16px; height: 16px; fill: #fff; }
+  .fv-placeholder {
+    font-family: 'DM Sans', sans-serif; font-size: 16px;
+    color: rgba(0,0,0,0.6); letter-spacing: -0.16px;
+  }
+  .fv-prompt-actions { display: flex; gap: 4px; align-items: center; }
+  .fv-icon-btn {
+    width: 44px; height: 44px; border-radius: 50%; border: none;
+    background: rgba(40,48,77,0.12); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .fv-icon-btn svg { width: 20px; height: 20px; }
+  .fv-round-btn {
+    width: 60px; height: 60px; border-radius: 50%;
+    background: rgba(255,255,255,0.85); backdrop-filter: blur(10px);
+    border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .fv-round-btn svg { width: 32px; height: 32px; }
+
+  /* ── TSV Thumbnail (top-right of focused list view) ── */
+
+  /* Focused view zoom in/out transition */
+  #focused-view {
+    transition: transform 0.38s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.38s ease;
+    transform-origin: top right;
+  }
+  #focused-view.zooming-out {
+    transform: scale(0.12) !important;
+    opacity: 0 !important;
+    pointer-events: none;
+  }
+  #focused-view.zooming-in {
+    transform: scale(0.12);
+    opacity: 0;
+  }
+
+  /* Summary card clickable */
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════
+     TEAM VIEW
+═══════════════════════════════════════ -->
+<div class="workspace" id="team-list-view">
+
+  <!-- TOP BAR — centered "My team" title + filters, floats over columns -->
+  <div class="top-bar">
+    <div class="top-bar-inner">
+      <p class="page-title">My team</p>
+      <div class="tv-filters">
+        <div class="fv-dropdown-wrap">
+          <button class="tv-filter-btn" id="tv-pill-urgency" onclick="toggleTvUrgencyDropdown(event)">
+            <span class="pill-label">All urgency levels</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+        </div>
+        <div class="fv-dropdown-wrap">
+          <button class="tv-filter-btn" id="tv-pill-category" onclick="toggleTvCategoryDropdown(event)">
+            <span class="pill-label">All categories</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div><!-- /top-bar -->
+
+
+  <!-- PANEL GRID -->
+  <div class="daily-briefing">
+
+    <!-- ME -->
+    <div class="member-col" data-member="0">
+      <div class="col-header">
+        <div class="col-header-top">
+          <div class="employee-chip">
+            <img class="chip-avatar" src="https://randomuser.me/api/portraits/women/44.jpg" alt="Me" />
+            <span class="chip-name">Me</span>
+          </div>
+          <button class="col-expand" onclick="expandMember(0)" title="Expand">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg>
+          </button>
+        </div>
+        <div class="col-employee-info">
+          <span>Customer Assistant</span>
+          <span>9am – 5pm</span>
+          <span>Clocked in: 8:50 am</span>
+        </div>
+      </div>
+      <div class="card-list">
+        <div class="bcard bcard-critical"><div class="bcard-cat-row"><span class="bcard-dot"></span><span class="bcard-category">Attendance</span></div><p class="bcard-copy"><u>Tyler</u> just called out. His <u>shift</u> starts in 45 minutes.</p></div>
+        <div class="bcard bcard-important"><div class="bcard-cat-row"><span class="bcard-dot"></span><span class="bcard-category">Staffing</span></div><p class="bcard-copy"><u>Tyler</u> is at 43 hrs. Tonight's <u>shift</u> triggers overtime.</p></div>
+        <div class="bcard bcard-headsup"><div class="bcard-cat-row"><span class="bcard-dot"></span><span class="bcard-category">Staffing</span></div><p class="bcard-copy">Last 2 evening shifts ran short. Tonight looks the same.</p></div>
+        <div class="bcard bcard-light"><div class="bcard-cat-row"><span class="bcard-dot"></span><span class="bcard-category">Scheduling</span></div><p class="bcard-copy">Your <u>schedule</u> for next week has zero gaps as of now.</p></div>
+        <div class="bcard bcard-light"><div class="bcard-cat-row"><span class="bcard-dot"></span><span class="bcard-category">Attendance</span></div><p class="bcard-copy">No call outs in <u>Electronics</u> for 11 straight days.</p></div>
+        <div class="bcard bcard-light"><div class="bcard-cat-row"><span class="bcard-dot"></span><span class="bcard-category">Team Patterns & Signals</span></div><p class="bcard-copy">Early arrivals are up. <u>6 staff</u> clocked in before their shift this week.</p></div>
+      </div>
+    </div>
+
+    <!-- AMANDA LIN-GREEN — clocked in 6:02 am (earliest) -->
+    <div class="member-col" data-member="1">
+      <div class="col-header">
+        <div class="col-header-top">
+          <div class="employee-chip">
+            <img class="chip-avatar" src="https://randomuser.me/api/portraits/women/63.jpg" alt="Amanda Lin-Green" />
+            <span class="chip-name">Amanda Lin-Green</span>
+          </div>
+          <button class="col-expand" onclick="expandMember(1)" title="Expand">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg>
+          </button>
+        </div>
+        <div class="col-employee-info">
+          <span>Bakery Lead</span>
+          <span>6am – 2pm</span>
+          <span>Clocked in: 6:02 am</span>
+        </div>
+      </div>
+      <div class="card-list">
+        <div class="bcard bcard-critical"><div class="bcard-cat-row"><span class="bcard-dot"></span><span class="bcard-category">Attendance</span></div><p class="bcard-copy"><u>Amanda</u> missed her meal break window. Action required within 30 min.</p></div>
+        <div class="bcard bcard-important"><div class="bcard-cat-row"><span class="bcard-dot"></span><span class="bcard-category">Staffing</span></div><p class="bcard-copy"><u>Bakery</u> is running critically short — peak hours start in 90 minutes.</p></div>
+        <div class="bcard bcard-light"><div class="bcard-cat-row"><span class="bcard-dot"></span><span class="bcard-category">Team Patterns & Signals</span></div><p class="bcard-copy">Early arrivals are up. <u>6 staff</u> clocked in before their shift this week.</p></div>
+      </div>
+    </div>
+
+    <!-- TOM NEWMAN — clocked in 7:55 am -->
+    <div class="member-col" data-member="2">
+      <div class="col-header">
+        <div class="col-header-top">
+          <div class="employee-chip">
+            <img class="chip-avatar" src="https://randomuser.me/api/portraits/men/32.jpg" alt="Tom Newman" />
+            <span class="chip-name">Tom Newman</span>
+          </div>
+          <button class="col-expand" onclick="expandMember(2)" title="Expand">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg>
+          </button>
+        </div>
+        <div class="col-employee-info">
+          <span>Sales Associate</span>
+          <span>8am – 4pm</span>
+          <span>Clocked in: 7:55 am</span>
+        </div>
+      </div>
+      <div class="card-list">
+        <div class="bcard bcard-critical"><div class="bcard-cat-row"><span class="bcard-dot"></span><span class="bcard-category">Attendance</span></div><p class="bcard-copy"><u>Tyler</u> just called out. His <u>shift</u> starts in 45 minutes.</p></div>
+        <div class="bcard bcard-critical"><div class="bcard-cat-row"><span class="bcard-dot"></span><span class="bcard-category">Attendance</span></div><p class="bcard-copy"><u>Sara</u> hasn't clocked in. Her <u>shift</u> started 20 minutes ago.</p></div>
+        <div class="bcard bcard-important"><div class="bcard-cat-row"><span class="bcard-dot"></span><span class="bcard-category">Overtime</span></div><p class="bcard-copy"><u>Tom</u> is approaching his weekly hour cap. Overtime risk tonight.</p></div>
+        <div class="bcard bcard-light"><div class="bcard-cat-row"><span class="bcard-dot"></span><span class="bcard-category">Team Patterns & Signals</span></div><p class="bcard-copy">Early arrivals are up. <u>6 staff</u> clocked in before their shift this week.</p></div>
+      </div>
+    </div>
+
+    <!-- JAMIE MISCH -->
+    <div class="member-col" data-member="3">
+      <div class="col-header">
+        <div class="col-header-top">
+          <div class="employee-chip">
+            <img class="chip-avatar" src="https://randomuser.me/api/portraits/women/28.jpg" alt="Jamie Misch" />
+            <span class="chip-name">Jamie Misch</span>
+          </div>
+          <button class="col-expand" onclick="expandMember(3)" title="Expand">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg>
+          </button>
+        </div>
+        <div class="col-employee-info">
+          <span>Electronics Specialist</span>
+          <span>10am – 6pm</span>
+          <span>Clocked in: 9:58 am</span>
+        </div>
+      </div>
+      <div class="card-list">
+        <div class="bcard bcard-light"><div class="bcard-cat-row"><span class="bcard-dot"></span><span class="bcard-category">Team Patterns & Signals</span></div><p class="bcard-copy">Early arrivals are up. <u>6 staff</u> clocked in before their shift this week.</p></div>
+        <div class="bcard bcard-headsup"><div class="bcard-cat-row"><span class="bcard-dot"></span><span class="bcard-category">Scheduling</span></div><p class="bcard-copy">Your <u>schedule</u> for next week has zero gaps as of now.</p></div>
+        <div class="bcard bcard-headsup"><div class="bcard-cat-row"><span class="bcard-dot"></span><span class="bcard-category">Attendance</span></div><p class="bcard-copy">No call outs in <u>Electronics</u> for 11 straight days.</p></div>
+      </div>
+    </div>
+
+    <!-- MARK HANNAFORD -->
+    <div class="member-col" data-member="4">
+      <div class="col-header">
+        <div class="col-header-top">
+          <div class="employee-chip">
+            <img class="chip-avatar" src="https://randomuser.me/api/portraits/men/77.jpg" alt="Mark Hannaford" />
+            <span class="chip-name">Mark Hannaford</span>
+          </div>
+          <button class="col-expand" onclick="expandMember(4)" title="Expand">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg>
+          </button>
+        </div>
+        <div class="col-employee-info">
+          <span>Stock Associate</span>
+          <span>7am – 3pm</span>
+          <span>Not clocked in</span>
+        </div>
+      </div>
+      <div class="card-list">
+        <div class="bcard bcard-important"><div class="bcard-cat-row"><span class="bcard-dot"></span><span class="bcard-category">Staffing</span></div><p class="bcard-copy">Last 2 evening shifts ran short. Tonight looks the same.</p></div>
+        <div class="bcard bcard-light"><div class="bcard-cat-row"><span class="bcard-dot"></span><span class="bcard-category">Team Patterns & Signals</span></div><p class="bcard-copy">Early arrivals are up. <u>6 staff</u> clocked in before their shift this week.</p></div>
+        <div class="bcard bcard-headsup"><div class="bcard-cat-row"><span class="bcard-dot"></span><span class="bcard-category">Scheduling</span></div><p class="bcard-copy">Your <u>schedule</u> for next week has zero gaps as of now.</p></div>
+        <div class="bcard bcard-ai"><div class="bcard-cat-row"><span class="bcard-dot"></span><span class="bcard-category">Bryte insight</span></div><p class="bcard-copy" style="font-family:'DM Sans',sans-serif;">Electronics is running critically short — peak hours start in 90 minutes.</p></div>
+      </div>
+    </div>
+
+  </div><!-- /daily-briefing -->
+
+  <!-- ASK BAR -->
+  <div class="ask-bar">
+    <div class="fv-prompt-field">
+      <div class="fv-prompt-inner">
+        <div class="fv-bryte-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+        </div>
+        <span class="fv-placeholder">Ask anything</span>
+      </div>
+      <div class="fv-prompt-actions">
+        <button class="fv-icon-btn" style="background:transparent;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+        </button>
+        <button class="fv-icon-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 18.5a6.5 6.5 0 006.5-6.5V9a6.5 6.5 0 00-13 0v3a6.5 6.5 0 006.5 6.5z"/><path d="M19.5 12a7.5 7.5 0 01-15 0M12 18.5v3M9 21.5h6"/></svg>
+        </button>
+      </div>
+    </div>
+    <button class="fv-round-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+    </button>
+    <button class="fv-round-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 016.5 17H20M4 19.5A2.5 2.5 0 004 17V5a2 2 0 012-2h12a2 2 0 012 2v12"/></svg>
+    </button>
+    <button class="fv-round-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+    </button>
+  </div>
+
+</div><!-- /workspace -->
+
+
+<!-- ═══════════════════════════════════════
+     FOCUSED VIEW
+═══════════════════════════════════════ -->
+<div id="focused-view">
+
+  <!-- Greeting -->
+  <div class="fv-header">
+    <div id="fv-avatar-lg" class="fv-avatar-lg av-me"></div>
+    <div class="fv-greeting-text">
+      <h1 class="fv-hi" id="fv-hi">My daily briefing</h1>
+      <p class="fv-sub" id="fv-sub">Your personal briefing</p>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="fv-filters">
+    <div class="fv-filter-pills">
+      <div class="fv-dropdown-wrap">
+        <button class="fv-pill" id="pill-urgency" onclick="toggleUrgencyDropdown(event)">
+          <span class="pill-label">All urgency levels</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+      </div>
+      <div class="fv-dropdown-wrap">
+        <button class="fv-pill" id="pill-category" onclick="toggleCategoryDropdown(event)">
+          <span class="pill-label">All categories</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="fv-header-actions">
+      <!-- Fullscreen-exit → Team list view -->
+      <button class="fv-icon-action" onclick="window.location.href='team-space.html'" title="Exit to Team list view">
+        <svg preserveAspectRatio="none" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path fill-rule="evenodd" clip-rule="evenodd" d="M4 7C5.59768 7 6.90366 5.75108 6.99491 4.17627L7 4V1C7 0.447715 6.55228 4.47035e-08 6 4.47035e-08C5.48716 4.47035e-08 5.06449 0.38604 5.00673 0.883379L5 1V3.586L1.70711 0.292893C1.31658 -0.0976311 0.683417 -0.0976311 0.292893 0.292893C-0.0675908 0.653377 -0.0953202 1.22061 0.209705 1.6129L0.292893 1.70711L3.584 5H1C0.447715 5 1.46188e-08 5.44772 1.46188e-08 6C1.46188e-08 6.51284 0.38604 6.93551 0.883379 6.99327L1 7H4ZM14 11C12.4023 11 11.0963 12.2489 11.0051 13.8237L11 14V17C11 17.5523 11.4477 18 12 18C12.5128 18 12.9355 17.614 12.9933 17.1166L13 17V14.414L16.2929 17.7071C16.6834 18.0976 17.3166 18.0976 17.7071 17.7071C18.0676 17.3466 18.0953 16.7794 17.7903 16.3871L17.7071 16.2929L14.416 13H17C17.5523 13 18 12.5523 18 12C18 11.4872 17.614 11.0645 17.1166 11.0067L17 11H14ZM14 7C12.4023 7 11.0963 5.75108 11.0051 4.17627L11 4V1C11 0.447715 11.4477 4.47035e-08 12 4.47035e-08C12.5128 4.47035e-08 12.9355 0.38604 12.9933 0.883379L13 1V3.586L16.2929 0.292893C16.6834 -0.0976311 17.3166 -0.0976311 17.7071 0.292893C18.0676 0.653377 18.0953 1.22061 17.7903 1.6129L17.7071 1.70711L14.416 5H17C17.5523 5 18 5.44772 18 6C18 6.51284 17.614 6.93551 17.1166 6.99327L17 7H14ZM4 11C5.59768 11 6.90366 12.2489 6.99491 13.8237L7 14V17C7 17.5523 6.55228 18 6 18C5.48716 18 5.06449 17.614 5.00673 17.1166L5 17V14.414L1.70711 17.7071C1.31658 18.0976 0.683417 18.0976 0.292893 17.7071C-0.0675908 17.3466 -0.0953202 16.7794 0.209705 16.3871L0.292893 16.2929L3.584 13H1C0.447715 13 1.46188e-08 12.5523 1.46188e-08 12C1.46188e-08 11.4872 0.38604 11.0645 0.883379 11.0067L1 11H4Z" fill="black" fill-opacity="0.65"/>
+        </svg>
+      </button>
+      <!-- Toggle pill: list view (active) / grid view → Team Small View -->
+      <div class="fv-toggle-pill">
+        <button class="fv-toggle-seg" title="List view">
+          <svg preserveAspectRatio="none" viewBox="0 0 18.4444 16.6" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M3.68889 0C1.65157 0 0 1.65157 0 3.68889C0 5.72621 1.65157 7.37778 3.68889 7.37778H14.7556C16.7929 7.37778 18.4444 5.72621 18.4444 3.68889C18.4444 1.65157 16.7929 0 14.7556 0H3.68889ZM1.84444 3.68889C1.84444 2.67023 2.67023 1.84444 3.68889 1.84444H14.7556C15.7742 1.84444 16.6 2.67023 16.6 3.68889C16.6 4.70755 15.7742 5.53333 14.7556 5.53333H3.68889C2.67023 5.53333 1.84444 4.70755 1.84444 3.68889Z" fill="black" fill-opacity="0.7"/>
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M3.68889 9.22222C1.65157 9.22222 0 10.8738 0 12.9111C0 14.9484 1.65157 16.6 3.68889 16.6H14.7556C16.7929 16.6 18.4444 14.9484 18.4444 12.9111C18.4444 10.8738 16.7929 9.22222 14.7556 9.22222H3.68889ZM1.84444 12.9111C1.84444 11.8925 2.67023 11.0667 3.68889 11.0667H14.7556C15.7742 11.0667 16.6 11.8925 16.6 12.9111C16.6 13.9298 15.7742 14.7556 14.7556 14.7556H3.68889C2.67023 14.7556 1.84444 13.9298 1.84444 12.9111Z" fill="black" fill-opacity="0.7"/>
+          </svg>
+        </button>
+        <button class="fv-toggle-seg" onclick="window.location.href='team-small-view.html'" title="Team Small View">
+          <svg preserveAspectRatio="none" viewBox="0 0 12.9111 12.9111" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4.8418 7.37793C5.2237 7.378 5.53314 7.68743 5.5332 8.06934V12.2197C5.53305 12.6016 5.22364 12.9111 4.8418 12.9111H0.691406C0.309623 12.911 0.000152512 12.6015 0 12.2197V8.06934C5.79762e-05 7.68748 0.309565 7.37807 0.691406 7.37793H4.8418ZM12.2197 7.37793C12.6016 7.37808 12.9111 7.68748 12.9111 8.06934V12.2197C12.911 12.6015 12.6015 12.911 12.2197 12.9111H8.06934C7.68748 12.9111 7.37808 12.6016 7.37793 12.2197V8.06934C7.37799 7.68742 7.68742 7.37799 8.06934 7.37793H12.2197ZM4.8418 0C5.22365 6.98248e-05 5.53306 0.309572 5.5332 0.691406V4.8418C5.53313 5.22369 5.22369 5.53313 4.8418 5.5332H0.691406C0.309572 5.53306 7.03592e-05 5.22365 0 4.8418V0.691406C0.000140133 0.309615 0.309615 0.000140667 0.691406 0H4.8418ZM12.2197 0C12.6015 0.000151978 12.911 0.309623 12.9111 0.691406V4.8418C12.9111 5.22364 12.6016 5.53305 12.2197 5.5332H8.06934C7.68743 5.53315 7.378 5.2237 7.37793 4.8418V0.691406C7.37807 0.309565 7.68748 5.85105e-05 8.06934 0H12.2197Z" fill="black" fill-opacity="0.2"/>
+          </svg>
+        </button>
+      </div>
+      <!-- More actions -->
+      <button class="fv-icon-action" title="More actions">
+        <svg preserveAspectRatio="none" viewBox="0 0 4 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path fill-rule="evenodd" clip-rule="evenodd" d="M2 4C3.1 4 4 3.1 4 2C4 0.9 3.1 0 2 0C0.9 0 0 0.9 0 2C0 3.1 0.9 4 2 4ZM2 6C0.9 6 0 6.9 0 8C0 9.1 0.9 10 2 10C3.1 10 4 9.1 4 8C4 6.9 3.1 6 2 6ZM0 14C0 12.9 0.9 12 2 12C3.1 12 4 12.9 4 14C4 15.1 3.1 16 2 16C0.9 16 0 15.1 0 14Z" fill="black" fill-opacity="0.65"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Canvas — all member slides laid out horizontally -->
+  <div class="fv-canvas" id="fv-canvas">
+    <div class="fv-track" id="fv-track"></div>
+  </div>
+
+  <!-- Frosted bottom -->
+  <div class="fv-bottom-blur"></div>
+
+  <!-- Member indicator dots -->
+  <div class="fv-dots" id="fv-dots"></div>
+
+  <!-- Focused ask bar -->
+  <div class="fv-ask-bar">
+    <div class="fv-prompt-field">
+      <div class="fv-prompt-inner">
+        <div class="fv-bryte-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+        </div>
+        <span class="fv-placeholder">Ask anything</span>
+      </div>
+      <div class="fv-prompt-actions">
+        <button class="fv-icon-btn" style="background:transparent;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+        </button>
+        <button class="fv-icon-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 18.5a6.5 6.5 0 006.5-6.5V9a6.5 6.5 0 00-13 0v3a6.5 6.5 0 006.5 6.5z"/><path d="M19.5 12a7.5 7.5 0 01-15 0M12 18.5v3M9 21.5h6"/></svg>
+        </button>
+      </div>
+    </div>
+    <button class="fv-round-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+    </button>
+    <button class="fv-round-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 016.5 17H20M4 19.5A2.5 2.5 0 004 17V5a2 2 0 012-2h12a2 2 0 012 2v12"/></svg>
+    </button>
+    <button class="fv-round-btn" onclick="closeFocused()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+    </button>
+  </div>
+
+</div><!-- /focused-view -->
+
+
+
+<script>
+const members = [
+  {
+    name: 'Me',
+    avatarClass: 'av-me',
+    photo: 'https://randomuser.me/api/portraits/women/44.jpg',
+    firstName: 'there',
+    cards: [
+      { type: 'critical',  category: 'Attendance', copy: '<span class="light"><u>Tyler Smith</u> just called out.</span> His <u>shift</u> starts in 45 minutes.', actions: ['Cover shift', 'Dismiss'] },
+      { type: 'important', category: 'Staffing',   copy: '<u>Tyler</u> is at 43 hrs. <span class="light">Tonight\'s shift triggers overtime.</span>', actions: ['Adjust hours', 'Notify team'] },
+      { type: 'navy',      category: 'Scheduling', copy: 'Your <u>schedule</u> for next week has zero gaps as of now.', actions: ['View schedule', 'Dismiss'] },
+      { type: 'light',     category: 'Team Patterns', copy: 'Your team was 94% on-time this week.', actions: ['View details', 'Share insight'] },
+    ]
+  },
+  {
+    name: 'Amanda Lin-Green',
+    avatarClass: 'av-amanda',
+    photo: 'https://randomuser.me/api/portraits/women/63.jpg',
+    firstName: 'Amanda',
+    cards: [
+      { type: 'critical',  category: 'Attendance', copy: '<u>Amanda</u> missed her meal break window. <span class="light">Action required within 30 min.</span>', actions: ['Waive', 'Send break now'] },
+      { type: 'important', category: 'Staffing',   copy: '<u>Bakery</u> is running <span class="light">critically short</span> — peak hours start in 90 minutes.', actions: ['Reassign staff', 'Escalate'] },
+      { type: 'light',     category: 'Team Patterns', copy: 'Early arrivals are up. <u>6 staff</u> clocked in before their shift this week.', actions: ['View details', 'Share insight'] },
+    ]
+  },
+  {
+    name: 'Tom Newman',
+    avatarClass: 'av-tom',
+    photo: 'https://randomuser.me/api/portraits/men/32.jpg',
+    firstName: 'Tom',
+    cards: [
+      { type: 'critical',  category: 'Attendance', copy: '<span class="light"><u>Tyler</u> just called out.</span> His <u>shift</u> starts in 45 minutes.', actions: ['Cover shift', 'Dismiss'] },
+      { type: 'critical',  category: 'Attendance', copy: '<span class="light"><u>Sara</u> hasn\'t clocked in.</span> Her shift started 20 minutes ago.', actions: ['Contact Sara', 'Dismiss'] },
+      { type: 'important', category: 'Overtime',   copy: '<u>Tom</u> is approaching his weekly hour cap. <span class="light">Overtime risk tonight.</span>', actions: ['Adjust hours', 'Notify team'] },
+      { type: 'light',     category: 'Team Patterns', copy: 'Early arrivals are up. <u>6 staff</u> clocked in before their shift this week.', actions: ['View details', 'Share insight'] },
+    ]
+  },
+  {
+    name: 'Jamie Misch',
+    avatarClass: 'av-jamie',
+    photo: 'https://randomuser.me/api/portraits/women/28.jpg',
+    firstName: 'Jamie',
+    cards: [
+      { type: 'navy',      category: 'Scheduling', copy: 'Your <u>schedule</u> for next week has zero gaps as of now.', actions: ['View schedule', 'Dismiss'] },
+      { type: 'navy',      category: 'Attendance', copy: 'No call outs in <u>Electronics</u> for 11 straight days.', actions: ['View record', 'Share insight'] },
+      { type: 'light',     category: 'Team Patterns', copy: 'Early arrivals are up. <u>6 staff</u> clocked in before their shift this week.', actions: ['View details', 'Share insight'] },
+    ]
+  },
+  {
+    name: 'Mark Hannaford',
+    avatarClass: 'av-mark',
+    photo: 'https://randomuser.me/api/portraits/men/77.jpg',
+    firstName: 'Mark',
+    cards: [
+      { type: 'important', category: 'Staffing',   copy: '<span class="light">Last 2 evening shifts ran short.</span> Tonight looks the same.', actions: ['View schedule', 'Take action'] },
+      { type: 'navy',      category: 'Scheduling', copy: '2 team members are <span class="light">approaching</span> their weekly hour limit.', actions: ['Adjust shifts', 'Notify team'] },
+      { type: 'navy',      category: 'Scheduling', copy: 'Your <u>schedule</u> for next week has zero gaps as of now.', actions: ['View schedule', 'Dismiss'] },
+      { type: 'light',     category: 'Team Patterns', copy: 'Your team was 94% on-time this week.', actions: ['View details', 'Share insight'] },
+    ]
+  }
+];
+
+let currentMember = 0;
+let trackOffset = 0;
+let isDragging = false;
+let dragStartX = 0;
+let dragLastX = 0;
+let dragVelocity = 0;
+let dragLastTime = 0;
+let wheelSnapTimer = null;
+let canvasInitialized = false;
+
+/* ── Filter state ── */
+let activeUrgency = null;
+let activeCategory = null;
+
+const CATEGORIES = ['Attendance','Staffing','Scheduling','Overtime','Compliance','Team Patterns & Signals'];
+const URGENCIES = [
+  { label:'Critical',      color:'#850715', type:'critical'  },
+  { label:'Important',     color:'#C97B0A', type:'important' },
+  { label:'Heads up',      color:'#062e69', type:'navy'      },
+  { label:'Good to know',  color:'#dbdfec', type:'light', border:true },
+];
+
+function countByCategory(idx) {
+  const counts = {};
+  CATEGORIES.forEach(c => counts[c] = 0);
+  members[idx].cards.forEach(card => {
+    const cat = card.category === 'Team Patterns' ? 'Team Patterns & Signals' : card.category;
+    if (cat in counts) counts[cat]++;
+  });
+  return counts;
+}
+
+function countByUrgency(idx) {
+  const counts = { critical:0, important:0, navy:0, light:0 };
+  members[idx].cards.forEach(c => { if (c.type in counts) counts[c.type]++; });
+  return counts;
+}
+
+function closeAllDropdowns() {
+  document.querySelectorAll('.fv-dropdown').forEach(d => d.remove());
+  document.querySelectorAll('.fv-pill.open, .tv-filter-btn.open').forEach(b => b.classList.remove('open'));
+}
+
+/* ── Team-view filter state ── */
+let tvActiveUrgency = null;
+let tvActiveCategory = null;
+
+const TV_TYPE_MAP = { critical:'critical', important:'important', headsup:'headsup', light:'light' };
+
+function urgencyDropdownHTML(active) {
+  const allRow = `<button class="fv-dd-urg-item${!active?' selected':''}" onclick="arguments[0].stopPropagation();tvSelectUrgency(null,event)">
+    <span class="fv-dd-swatch" style="background:rgba(0,0,0,0.08);"></span>
+    <span>All</span>
+  </button>`;
+  return allRow + URGENCIES.map(u =>
+    `<button class="fv-dd-urg-item${active===u.type?' selected':''}" onclick="arguments[0].stopPropagation();tvSelectUrgency('${u.type}',event)">
+      <span class="fv-dd-swatch" style="background:${u.color};${u.border?'border:1.5px solid #bbb;':''}"></span>
+      <span>${u.label}</span>
+    </button>`
+  ).join('');
+}
+
+function categoryDropdownHTML(active, counts) {
+  const allRow = `<button class="fv-dd-chip${!active?' selected':''}" onclick="arguments[0].stopPropagation();tvSelectCategory(null,event)">
+    <span>All</span>${counts?'':''}
+  </button>`;
+  return allRow + CATEGORIES.map(cat =>
+    `<button class="fv-dd-chip${active===cat?' selected':''}" onclick="arguments[0].stopPropagation();tvSelectCategory('${cat}',event)">
+      <span>${cat}</span>
+    </button>`
+  ).join('');
+}
+
+function toggleTvUrgencyDropdown(e) {
+  e.stopPropagation();
+  const btn = document.getElementById('tv-pill-urgency');
+  if (btn.classList.contains('open')) { closeAllDropdowns(); return; }
+  closeAllDropdowns();
+  btn.classList.add('open');
+  const dd = document.createElement('div');
+  dd.className = 'fv-dropdown';
+  dd.innerHTML = urgencyDropdownHTML(tvActiveUrgency);
+  btn.parentElement.appendChild(dd);
+  setTimeout(() => document.addEventListener('click', closeAllDropdowns, { once: true }), 0);
+}
+
+function toggleTvCategoryDropdown(e) {
+  e.stopPropagation();
+  const btn = document.getElementById('tv-pill-category');
+  if (btn.classList.contains('open')) { closeAllDropdowns(); return; }
+  closeAllDropdowns();
+  btn.classList.add('open');
+  const dd = document.createElement('div');
+  dd.className = 'fv-dropdown';
+  dd.innerHTML = categoryDropdownHTML(tvActiveCategory, null);
+  btn.parentElement.appendChild(dd);
+  setTimeout(() => document.addEventListener('click', closeAllDropdowns, { once: true }), 0);
+}
+
+function tvSelectUrgency(type, e) {
+  if (e) e.stopPropagation();
+  tvActiveUrgency = type;
+  const btn = document.getElementById('tv-pill-urgency');
+  btn.querySelector('.pill-label').textContent = tvActiveUrgency
+    ? URGENCIES.find(u => u.type === tvActiveUrgency).label : 'All urgency levels';
+  tvFilterCards();
+  closeAllDropdowns();
+}
+
+function tvSelectCategory(cat, e) {
+  if (e) e.stopPropagation();
+  tvActiveCategory = cat;
+  const btn = document.getElementById('tv-pill-category');
+  btn.querySelector('.pill-label').textContent = tvActiveCategory || 'All categories';
+  tvFilterCards();
+  closeAllDropdowns();
+}
+
+function tvFilterCards() {
+  document.querySelectorAll('.member-col .card-list').forEach(list => {
+    list.querySelectorAll('.bcard').forEach(card => {
+      const typeClass = ['critical','important','headsup','light','ai'].find(t => card.classList.contains('bcard-'+t));
+      const catText = card.querySelector('.bcard-category')?.textContent.trim() || '';
+      const urgMatch = !tvActiveUrgency || typeClass === tvActiveUrgency;
+      const catNorm = catText === 'Team Patterns & Signals' ? 'Team Patterns & Signals' : catText;
+      const catMatch = !tvActiveCategory || catNorm === tvActiveCategory;
+      card.style.display = (urgMatch && catMatch) ? '' : 'none';
+    });
+  });
+}
+
+function toggleUrgencyDropdown(e) {
+  e.stopPropagation();
+  const btn = document.getElementById('pill-urgency');
+  if (btn.classList.contains('open')) { closeAllDropdowns(); return; }
+  closeAllDropdowns();
+  btn.classList.add('open');
+  const counts = countByUrgency(currentMember);
+  const dd = document.createElement('div');
+  dd.className = 'fv-dropdown';
+  const allRow = `<button class="fv-dd-urg-item${!activeUrgency?' selected':''}" onclick="selectUrgency(null,event)">
+    <span class="fv-dd-swatch" style="background:rgba(0,0,0,0.08);"></span>
+    <span>All</span>
+  </button>`;
+  dd.innerHTML = allRow + URGENCIES.map(u =>
+    `<button class="fv-dd-urg-item${activeUrgency===u.type?' selected':''}"
+       onclick="selectUrgency('${u.type}',event)">
+      <span class="fv-dd-swatch" style="background:${u.color};${u.border?'border:1.5px solid #bbb;':''}"></span>
+      <span>${u.label}</span>
+      <span class="fv-dd-urg-count">${counts[u.type]}</span>
+    </button>`
+  ).join('');
+  btn.parentElement.appendChild(dd);
+  setTimeout(() => document.addEventListener('click', closeAllDropdowns, { once: true }), 0);
+}
+
+function toggleCategoryDropdown(e) {
+  e.stopPropagation();
+  const btn = document.getElementById('pill-category');
+  if (btn.classList.contains('open')) { closeAllDropdowns(); return; }
+  closeAllDropdowns();
+  btn.classList.add('open');
+  const counts = countByCategory(currentMember);
+  const dd = document.createElement('div');
+  dd.className = 'fv-dropdown';
+  const allRow = `<button class="fv-dd-chip${!activeCategory?' selected':''}" onclick="selectCategory(null,event)">
+    <span>All</span>
+  </button>`;
+  dd.innerHTML = allRow + CATEGORIES.map(cat =>
+    `<button class="fv-dd-chip${activeCategory===cat?' selected':''}"
+       onclick="selectCategory('${cat}',event)">
+      <span>${cat}</span>
+      <span class="dd-count">${counts[cat]}</span>
+    </button>`
+  ).join('');
+  btn.parentElement.appendChild(dd);
+  setTimeout(() => document.addEventListener('click', closeAllDropdowns, { once: true }), 0);
+}
+
+function selectUrgency(type, e) {
+  if (e) e.stopPropagation();
+  activeUrgency = type;
+  const btn = document.getElementById('pill-urgency');
+  btn.querySelector('.pill-label').textContent = activeUrgency
+    ? URGENCIES.find(u => u.type === activeUrgency).label
+    : 'All urgency levels';
+  filterCards();
+  closeAllDropdowns();
+}
+
+function selectCategory(cat, e) {
+  if (e) e.stopPropagation();
+  activeCategory = cat;
+  const btn = document.getElementById('pill-category');
+  btn.querySelector('.pill-label').textContent = activeCategory || 'All categories';
+  filterCards();
+  closeAllDropdowns();
+}
+
+function filterCards() {
+  document.querySelectorAll('.fv-slide').forEach((slide, idx) => {
+    const filtered = members[idx].cards.filter(card => {
+      const cat = card.category === 'Team Patterns' ? 'Team Patterns & Signals' : card.category;
+      const catMatch = !activeCategory || cat === activeCategory;
+      const urgMatch = !activeUrgency || card.type === activeUrgency;
+      return catMatch && urgMatch;
+    });
+    slide.querySelector('.fv-cards').innerHTML = filtered.map(cardHTML).join('');
+  });
+}
+
+
+function cardHTML(card) {
+  const cls = { critical:'fv-card-critical', important:'fv-card-important', navy:'fv-card-navy', light:'fv-card-light' }[card.type] || 'fv-card-navy';
+  return `<div class="fv-card ${cls}">
+    <span class="fv-card-category"><span class="fv-cat-dot"></span>${card.category}</span>
+    <div class="fv-card-body">
+      <p class="fv-card-copy">${card.copy}</p>
+      <div class="fv-card-actions">
+        <button class="btn-secondary">${card.actions[0]}</button>
+        <button class="btn-primary">${card.actions[1]}</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ── Render all slides into the track ── */
+function renderAllSlides() {
+  const track = document.getElementById('fv-track');
+  track.innerHTML = members.map(m =>
+    `<div class="fv-slide"><div class="fv-cards">${m.cards.map(cardHTML).join('')}</div></div>`
+  ).join('');
+}
+
+/* ── Update header & dots for currentMember ── */
+function updateHeader() {
+  const m = members[currentMember];
+  const isMe = currentMember === 0;
+  document.getElementById('fv-hi').textContent = isMe ? 'My daily briefing' : m.name;
+  const sub = document.getElementById('fv-sub');
+  if (sub) sub.textContent = isMe ? 'Your personal briefing' : 'Daily briefing';
+  const av = document.getElementById('fv-avatar-lg');
+  if (m.photo) {
+    av.innerHTML = `<img src="${m.photo}" alt="${m.name}" style="width:100%;height:100%;object-fit:cover;" />`;
+    av.className = 'fv-avatar-lg';
+    av.style.cssText = '';
+  } else {
+    av.innerHTML = '';
+    av.className = 'fv-avatar-lg ' + m.avatarClass;
+    av.style.cssText = '';
+  }
+  // Dots
+  document.querySelectorAll('.fv-dot').forEach((d, i) => d.classList.toggle('active', i === currentMember));
+}
+
+
+/* ── Canvas pan ── */
+function getSlideWidth() { return window.innerWidth; }
+
+function applyTrackOffset(offset, animated) {
+  const track = document.getElementById('fv-track');
+  track.style.transition = animated ? 'transform 0.42s cubic-bezier(0.25, 1, 0.5, 1)' : 'none';
+  track.style.transform = `translateX(${offset}px)`;
+}
+
+function snapTo(index, animated = true) {
+  index = Math.max(0, Math.min(members.length - 1, index));
+  currentMember = index;
+  trackOffset = -index * getSlideWidth();
+  applyTrackOffset(trackOffset, animated);
+  updateHeader();
+  // Reset that slide's scroll
+  const slides = document.querySelectorAll('.fv-slide');
+  if (slides[index]) slides[index].scrollTop = 0;
+}
+
+function initCanvas() {
+  if (canvasInitialized) return;
+  canvasInitialized = true;
+  const canvas = document.getElementById('fv-canvas');
+
+  /* Mouse drag */
+  canvas.addEventListener('mousedown', e => {
+    if (e.target.closest('button')) return; // don't steal button clicks
+    isDragging = true;
+    dragStartX = dragLastX = e.clientX;
+    dragVelocity = 0;
+    dragLastTime = Date.now();
+    canvas.classList.add('dragging');
+    applyTrackOffset(trackOffset, false);
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    const now = Date.now();
+    const dt = now - dragLastTime || 1;
+    const dx = e.clientX - dragLastX;
+    dragVelocity = dx / dt;
+    dragLastX = e.clientX;
+    dragLastTime = now;
+    const minOffset = -(members.length - 1) * getSlideWidth();
+    trackOffset = Math.max(minOffset, Math.min(0, trackOffset + dx));
+    applyTrackOffset(trackOffset, false);
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!isDragging) return;
+    isDragging = false;
+    document.getElementById('fv-canvas').classList.remove('dragging');
+    // Apply momentum then snap
+    const momentum = dragVelocity * 120;
+    const projected = trackOffset + momentum;
+    const targetIndex = Math.round(-projected / getSlideWidth());
+    snapTo(targetIndex);
+  });
+
+  /* Trackpad / wheel horizontal scroll */
+  canvas.addEventListener('wheel', e => {
+    if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return; // vertical scroll → let slide handle it
+    e.preventDefault();
+    const minOffset = -(members.length - 1) * getSlideWidth();
+    trackOffset = Math.max(minOffset, Math.min(0, trackOffset - e.deltaX));
+    applyTrackOffset(trackOffset, false);
+    // Live-update header while swiping
+    const liveIndex = Math.round(-trackOffset / getSlideWidth());
+    if (liveIndex !== currentMember) {
+      currentMember = Math.max(0, Math.min(members.length - 1, liveIndex));
+      updateHeader();
+        }
+    clearTimeout(wheelSnapTimer);
+    wheelSnapTimer = setTimeout(() => snapTo(Math.round(-trackOffset / getSlideWidth())), 180);
+  }, { passive: false });
+
+  /* Touch */
+  let touchStartX = 0;
+  canvas.addEventListener('touchstart', e => {
+    touchStartX = e.touches[0].clientX;
+    applyTrackOffset(trackOffset, false);
+  }, { passive: true });
+
+  canvas.addEventListener('touchmove', e => {
+    const dx = e.touches[0].clientX - touchStartX;
+    const minOffset = -(members.length - 1) * getSlideWidth();
+    const newOffset = Math.max(minOffset, Math.min(0, (-currentMember * getSlideWidth()) + dx));
+    applyTrackOffset(newOffset, false);
+    trackOffset = newOffset;
+  }, { passive: true });
+
+  canvas.addEventListener('touchend', () => {
+    snapTo(Math.round(-trackOffset / getSlideWidth()));
+  });
+}
+
+/* ── Open focused view ── */
+function expandMember(index) {
+  currentMember = index;
+  renderAllSlides();
+  updateHeader();
+  // Render dots
+  document.getElementById('fv-dots').innerHTML = members.map((_, i) =>
+    `<div class="fv-dot${i === index ? ' active' : ''}"></div>`).join('');
+
+  // Position canvas immediately (no animation)
+  trackOffset = -index * getSlideWidth();
+  applyTrackOffset(trackOffset, false);
+
+  const fv = document.getElementById('focused-view');
+  fv.classList.add('visible', 'zooming-in');
+  fv.getBoundingClientRect();
+  requestAnimationFrame(() => requestAnimationFrame(() => fv.classList.remove('zooming-in')));
+
+  document.querySelector('.ask-bar').style.display = 'none';
+
+  initCanvas();
+}
+
+/* ── Close focused view ── */
+function closeFocused(zoomOut = false) {
+  const fv = document.getElementById('focused-view');
+  function finish() {
+    fv.classList.remove('visible', 'zooming-out');
+    fv.style.transform = fv.style.opacity = '';
+    document.querySelector('.ask-bar').style.display = 'flex';
+  }
+  if (zoomOut) { fv.classList.add('zooming-out'); setTimeout(finish, 400); }
+  else finish();
+}
+
+/* ── Keyboard ── */
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('focused-view').classList.contains('visible')) return;
+  if (e.key === 'Escape') closeFocused();
+  if (e.key === 'ArrowLeft')  snapTo(currentMember - 1);
+  if (e.key === 'ArrowRight') snapTo(currentMember + 1);
+});
+
+/* ── Deep link from Team Small View ── */
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  const memberParam = params.get('member');
+  const urgencyParam = params.get('urgency');
+  if (memberParam !== null) {
+    const idx = parseInt(memberParam);
+    if (!isNaN(idx) && idx >= 0 && idx < members.length) {
+      expandMember(idx);
+      if (urgencyParam) selectUrgency(urgencyParam);
+    }
+  }
+})();
+</script>
+</body>
+</html>

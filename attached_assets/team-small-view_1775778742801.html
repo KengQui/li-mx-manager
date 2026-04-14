@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Team Small View – AI Orchestrated Workspace</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%; min-height: 100vh;
+  font-family: 'Inter', sans-serif;
+  background: #eff1f8;
+  overflow-x: hidden;
+}
+
+/* ═══ FIXED TOP BAR ═══ */
+.top-bar {
+  position: fixed; top: 0; left: 0; right: 0;
+  z-index: 100; pointer-events: none;
+}
+.top-bar::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(to bottom, #eff1f8 70%, transparent);
+  pointer-events: none;
+}
+.top-bar-inner {
+  position: relative;
+  padding: 120px 0 0 117px;
+  display: flex; flex-direction: column; gap: 20px;
+  pointer-events: auto;
+}
+.page-title {
+  font-weight: 500; font-size: 24px; line-height: 21px;
+  color: rgba(0,0,0,0.95);
+}
+.tv-filters { display: flex; gap: 20px; align-items: center; }
+.tv-filter-btn {
+  display: flex; align-items: center; gap: 4px;
+  background: none; border: none; cursor: pointer;
+  font-size: 16px; font-family: 'Inter', sans-serif;
+  color: #000; letter-spacing: -0.48px; padding: 0;
+}
+.tv-filter-btn svg { width: 20px; height: 20px; opacity: 0.6; }
+
+/* ═══ PAGE LAYOUT ═══ */
+.tsv-page {
+  padding: 240px 117px 160px;
+}
+
+/* ═══ MAIN CARD CONTAINER ═══ */
+.tsv-container {
+  background: #fff;
+  border-radius: 24px;
+  box-shadow: 0 2px 10px #eaecf4;
+  display: flex;
+  height: 565px;
+  gap: 12px;
+  padding: 8px;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Clocked-in badge (top-left of container) */
+.tsv-clocked-badge {
+  position: absolute; top: 18px; left: 17px;
+  background: #656565; border-radius: 80px;
+  padding: 3px 10px 3px 8px;
+  display: flex; align-items: center; gap: 6px;
+  z-index: 10;
+}
+.tsv-clocked-badge svg { width: 14px; height: 14px; color: #fff; }
+.tsv-clocked-badge span {
+  font-size: 11.2px; font-weight: 500;
+  color: #fff; line-height: 22.4px; white-space: nowrap;
+}
+
+/* ═══ MAIN ACTIVE AREA ═══ */
+.tsv-main {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column;
+  gap: 0;
+  padding: 80px 24px 40px;
+  overflow: hidden;
+}
+
+/* Featured "Me" row */
+.tsv-featured {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+  margin-bottom: 32px;
+}
+.tsv-me-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+
+/* Me bubble cluster — positioned relative to me-wrap */
+.tsv-bubbles {
+  position: absolute;
+  right: -100px;
+  top: -50px;
+  width: 180px;
+  height: 180px;
+  pointer-events: none;
+}
+.tsv-bubble {
+  position: absolute;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 700;
+  letter-spacing: -0.16px;
+  line-height: 1;
+}
+.bubble-light    { background: #dbe2ff; color: #062e69; }
+.bubble-headsup  { background: #4766ff; color: #fff; }
+.bubble-important{ background: #e68200; color: #fff; }
+.bubble-critical { background: #e80d24; color: #fff; }
+
+/* ═══ AVATAR SIZES ═══ */
+.tsv-avatar-lg {
+  width: 92px; height: 92px;
+  border-radius: 7.2px; object-fit: cover; flex-shrink: 0;
+  cursor: pointer;
+}
+.tsv-avatar-sm {
+  width: 53px; height: 53px;
+  border-radius: 7.2px; object-fit: cover; flex-shrink: 0;
+  cursor: pointer;
+}
+.tsv-bubble { cursor: pointer; }
+.emp-badge  { cursor: pointer; }
+
+/* ═══ EMPLOYEE NAME CHIP ═══ */
+.emp-chip {
+  background: rgba(34,43,75,0.12);
+  border-radius: 8px;
+  padding: 2px 8px 2px 4px;
+  font-size: 14px; font-weight: 500;
+  color: rgba(0,0,0,0.95);
+  letter-spacing: -0.14px;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  white-space: nowrap;
+  display: inline-block;
+}
+
+/* ═══ INFO CHIPS (location, schedule) ═══ */
+.info-chips {
+  display: flex; flex-direction: column;
+  gap: 2px; align-items: center;
+}
+.info-chip {
+  background: #fff;
+  border-radius: 80px;
+  padding: 0 8px 0 7px;
+  display: flex; align-items: center; gap: 0;
+  white-space: nowrap;
+  height: 22px;
+}
+.info-chip svg {
+  width: 14.4px; height: 14.4px;
+  flex-shrink: 0; margin-right: 3px;
+  color: rgba(0,0,0,0.45);
+}
+.info-chip span {
+  font-size: 11.2px; font-weight: 400;
+  color: #000; letter-spacing: -0.112px;
+  line-height: 22.4px;
+}
+
+/* ═══ OTHER EMPLOYEES ROW ═══ */
+.tsv-others {
+  display: flex;
+  gap: 40px;
+  align-items: flex-start;
+  justify-content: center;
+  flex: 1;
+}
+.tsv-employee {
+  display: flex; flex-direction: column;
+  gap: 8px; align-items: center;
+  position: relative;
+}
+/* Per-employee alert badge */
+.emp-badge {
+  position: absolute;
+  top: -10px; right: -14px;
+  border-radius: 100px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700;
+  line-height: 1;
+  min-width: 28px; min-height: 28px;
+  padding: 4px 8px;
+  color: #fff;
+}
+.emp-badge.badge-critical  { background: #e80d24; }
+.emp-badge.badge-important { background: #e68200; }
+.emp-badge.badge-headsup   { background: #4766ff; }
+.emp-badge.badge-light     { background: #dbe2ff; color: #062e69; }
+
+/* ═══ RIGHT SIDEBAR (off-shift) ═══ */
+.tsv-sidebar {
+  background: #f3f3f3;
+  border-radius: 20px;
+  width: 195px; flex-shrink: 0;
+  display: flex; flex-direction: column;
+  gap: 40px;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 24px;
+}
+.tsv-off-employee {
+  display: flex; flex-direction: column;
+  gap: 8px; align-items: center;
+}
+.status-chip {
+  border-radius: 80px;
+  padding: 3px 10px 3px 8px;
+  display: flex; align-items: center; gap: 6px;
+}
+.status-chip svg { width: 14.4px; height: 14.4px; flex-shrink: 0; }
+.status-chip span {
+  font-size: 11.2px; font-weight: 500;
+  color: #fff; letter-spacing: -0.112px; line-height: 22.4px;
+  white-space: nowrap;
+}
+.status-lunch   { background: rgba(0,0,0,0.43); }
+.status-timeoff { background: #7532bc; }
+
+/* ═══ FROSTED ASK BAR ═══ */
+.ask-bar {
+  position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 12px; align-items: center; z-index: 150;
+  filter: drop-shadow(0px 8px 40px rgba(189,195,214,0.4));
+}
+.fv-prompt-field {
+  background: rgba(255,255,255,0.8);
+  backdrop-filter: blur(10px);
+  border-radius: 24px; height: 62px; width: 500px;
+  display: flex; align-items: center; gap: 4px;
+  padding: 4px 12px 4px 16px;
+}
+.fv-prompt-inner {
+  flex: 1; display: flex; gap: 11px; align-items: center; min-width: 0;
+}
+.fv-bryte-icon {
+  width: 32px; height: 32px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg,#6B3FD4 0%,#4B2DB0 100%);
+  border-radius: 50%;
+}
+.fv-bryte-icon svg { width: 18px; height: 18px; fill: #fff; }
+.fv-placeholder {
+  font-size: 16px; font-weight: 400; color: rgba(0,0,0,0.6);
+  letter-spacing: -0.16px;
+}
+.fv-prompt-actions { display: flex; gap: 4px; align-items: center; flex-shrink: 0; }
+.fv-icon-btn {
+  width: 36px; height: 36px; border-radius: 50%; border: none; cursor: pointer;
+  background: #eef0f7; display: flex; align-items: center; justify-content: center;
+}
+.fv-icon-btn svg { width: 20px; height: 20px; color: rgba(0,0,0,0.55); }
+.fv-round-btn {
+  width: 60px; height: 60px; border-radius: 50%;
+  background: rgba(255,255,255,0.8); backdrop-filter: blur(10px);
+  border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.fv-round-btn svg { width: 32px; height: 32px; color: rgba(0,0,0,0.65); }
+
+/* ═══ ZOOM CONTROL ═══ */
+.tsv-zoom {
+  position: fixed; bottom: 120px; right: 120px;
+  background: #fff; border-radius: 27.667px;
+  box-shadow: 0 6.4px 32px rgba(189,195,214,0.4);
+  display: flex; align-items: center;
+  height: 38px; padding: 3px;
+  z-index: 50;
+}
+.tsv-zoom-pct {
+  padding: 0 14px;
+  font-size: 14px; font-weight: 400;
+  color: rgba(0,0,0,0.6); letter-spacing: -0.16px;
+  white-space: nowrap;
+}
+.tsv-zoom-btn {
+  width: 32px; height: 32px; border: none; background: none;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; color: rgba(0,0,0,0.55);
+  font-size: 18px; font-weight: 400;
+}
+.tsv-zoom-divider {
+  width: 0.553px; height: 32px; background: rgba(0,0,0,0.1);
+}
+</style>
+</head>
+<body>
+
+<!-- FIXED TOP BAR -->
+<div class="top-bar">
+  <div class="top-bar-inner">
+    <p class="page-title">My team</p>
+    <div class="tv-filters">
+      <button class="tv-filter-btn">
+        <span>All urgency levels</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <button class="tv-filter-btn">
+        <span>All categories</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN PAGE -->
+<div class="tsv-page">
+  <div class="tsv-container">
+
+    <!-- Clocked-in badge -->
+    <div class="tsv-clocked-badge">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      <span>Clocked in</span>
+    </div>
+
+    <!-- ═══ MAIN ACTIVE AREA ═══ -->
+    <div class="tsv-main">
+
+      <!-- ME — featured with large avatar + bubble cluster -->
+      <div class="tsv-featured">
+        <div class="tsv-me-wrap">
+          <img class="tsv-avatar-lg" src="https://randomuser.me/api/portraits/women/44.jpg" alt="Me" onclick="window.location.href='team-space.html?member=0'" />
+          <span class="emp-chip">Me</span>
+          <div class="info-chips">
+            <div class="info-chip">
+              <!-- location icon -->
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+              <span>Front desk</span>
+            </div>
+            <div class="info-chip">
+              <!-- calendar icon -->
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              <span>9am – 5pm</span>
+            </div>
+          </div>
+
+          <!-- Overlapping bubble cluster: one per urgency type -->
+          <div class="tsv-bubbles">
+            <div class="tsv-bubble bubble-light"    style="width:75px;height:75px;top:47px;left:79px;"  onclick="window.location.href='team-space.html?member=0&urgency=light'">1</div>
+            <div class="tsv-bubble bubble-headsup"  style="width:63px;height:63px;top:22px;left:28px;"  onclick="window.location.href='team-space.html?member=0&urgency=navy'">1</div>
+            <div class="tsv-bubble bubble-important"style="width:42px;height:42px;top:45px;left:0px;"   onclick="window.location.href='team-space.html?member=0&urgency=important'">1</div>
+            <div class="tsv-bubble bubble-critical" style="width:34px;height:34px;top:104px;left:84px;" onclick="window.location.href='team-space.html?member=0&urgency=critical'">1</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- OTHER EMPLOYEES ROW -->
+      <div class="tsv-others">
+
+        <!-- AMANDA LIN-GREEN — 1 critical -->
+        <div class="tsv-employee">
+          <div style="position:relative;display:inline-block;">
+            <img class="tsv-avatar-sm" src="https://randomuser.me/api/portraits/women/63.jpg" alt="Amanda Lin-Green" onclick="window.location.href='team-space.html?member=1'" />
+            <div class="emp-badge badge-critical" onclick="window.location.href='team-space.html?member=1&urgency=critical'">1</div>
+          </div>
+          <span class="emp-chip">Amanda Lin-Green</span>
+          <div class="info-chips">
+            <div class="info-chip">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+              <span>Kitchen</span>
+            </div>
+            <div class="info-chip">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              <span>6am – 2pm</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- TOM NEWMAN — 2 critical -->
+        <div class="tsv-employee">
+          <div style="position:relative;display:inline-block;">
+            <img class="tsv-avatar-sm" src="https://randomuser.me/api/portraits/men/32.jpg" alt="Tom Newman" onclick="window.location.href='team-space.html?member=2'" />
+            <div class="emp-badge badge-critical" style="width:42px;height:42px;font-size:16px;" onclick="window.location.href='team-space.html?member=2&urgency=critical'">2</div>
+          </div>
+          <span class="emp-chip">Tom Newman</span>
+          <div class="info-chips">
+            <div class="info-chip">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+              <span>Front desk</span>
+            </div>
+            <div class="info-chip">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              <span>8am – 4pm</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- JAMIE MISCH — 2 headsup -->
+        <div class="tsv-employee">
+          <div style="position:relative;display:inline-block;">
+            <img class="tsv-avatar-sm" src="https://randomuser.me/api/portraits/women/28.jpg" alt="Jamie Misch" onclick="window.location.href='team-space.html?member=3'" />
+            <div class="emp-badge badge-headsup" onclick="window.location.href='team-space.html?member=3&urgency=navy'">2</div>
+          </div>
+          <span class="emp-chip">Jamie Misch</span>
+          <div class="info-chips">
+            <div class="info-chip">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+              <span>Electronics</span>
+            </div>
+            <div class="info-chip">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              <span>10am – 6pm</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- MARK HANNAFORD — 1 important -->
+        <div class="tsv-employee">
+          <div style="position:relative;display:inline-block;">
+            <img class="tsv-avatar-sm" src="https://randomuser.me/api/portraits/men/77.jpg" alt="Mark Hannaford" onclick="window.location.href='team-space.html?member=4'" />
+            <div class="emp-badge badge-important" onclick="window.location.href='team-space.html?member=4&urgency=important'">1</div>
+          </div>
+          <span class="emp-chip">Mark Hannaford</span>
+          <div class="info-chips">
+            <div class="info-chip">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+              <span>Stockroom</span>
+            </div>
+            <div class="info-chip">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              <span>7am – 3pm</span>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /tsv-others -->
+    </div><!-- /tsv-main -->
+
+    <!-- ═══ RIGHT SIDEBAR (off-shift) ═══ -->
+    <div class="tsv-sidebar">
+
+      <!-- Employee on lunch -->
+      <div class="tsv-off-employee">
+        <img class="tsv-avatar-sm" src="https://randomuser.me/api/portraits/women/56.jpg" alt="Sarah Chen" />
+        <span class="emp-chip">Sarah Chen</span>
+        <div class="status-chip status-lunch">
+          <!-- clock-out icon -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#fff;"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l-3 3"/></svg>
+          <span>Lunch break</span>
+        </div>
+      </div>
+
+      <!-- Employee on time off -->
+      <div class="tsv-off-employee">
+        <img class="tsv-avatar-sm" src="https://randomuser.me/api/portraits/men/41.jpg" alt="David Kim" />
+        <span class="emp-chip">David Kim</span>
+        <div class="status-chip status-timeoff">
+          <!-- time-off / palm tree icon approximation -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#fff;"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+          <span>Time off</span>
+        </div>
+      </div>
+
+    </div><!-- /tsv-sidebar -->
+
+  </div><!-- /tsv-container -->
+</div><!-- /tsv-page -->
+
+<!-- ═══ ASK BAR ═══ -->
+<div class="ask-bar">
+  <div class="fv-prompt-field">
+    <div class="fv-prompt-inner">
+      <div class="fv-bryte-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+      </div>
+      <span class="fv-placeholder">Ask anything</span>
+    </div>
+    <div class="fv-prompt-actions">
+      <button class="fv-icon-btn" style="background:transparent;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+      </button>
+      <button class="fv-icon-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 18.5a6.5 6.5 0 006.5-6.5V9a6.5 6.5 0 00-13 0v3a6.5 6.5 0 006.5 6.5z"/><path d="M19.5 12a7.5 7.5 0 01-15 0M12 18.5v3M9 21.5h6"/></svg>
+      </button>
+    </div>
+  </div>
+  <button class="fv-round-btn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+  </button>
+  <button class="fv-round-btn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+  </button>
+  <button class="fv-round-btn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+  </button>
+</div>
+
+<!-- ═══ ZOOM CONTROL ═══ -->
+<div class="tsv-zoom">
+  <button class="tsv-zoom-btn" id="zoom-minus">–</button>
+  <div class="tsv-zoom-divider"></div>
+  <span class="tsv-zoom-pct" id="zoom-pct">100%</span>
+  <div class="tsv-zoom-divider"></div>
+  <button class="tsv-zoom-btn" id="zoom-plus">+</button>
+</div>
+
+<script>
+/* Zoom control */
+let zoomLevel = 100;
+const zoomPct = document.getElementById('zoom-pct');
+const card = document.querySelector('.tsv-container');
+
+document.getElementById('zoom-plus').addEventListener('click', () => {
+  zoomLevel = Math.min(200, zoomLevel + 10);
+  zoomPct.textContent = zoomLevel + '%';
+  card.style.transform = `scale(${zoomLevel / 100})`;
+  card.style.transformOrigin = 'top left';
+});
+document.getElementById('zoom-minus').addEventListener('click', () => {
+  zoomLevel = Math.max(50, zoomLevel - 10);
+  zoomPct.textContent = zoomLevel + '%';
+  card.style.transform = `scale(${zoomLevel / 100})`;
+  card.style.transformOrigin = 'top left';
+});
+</script>
+</body>
+</html>

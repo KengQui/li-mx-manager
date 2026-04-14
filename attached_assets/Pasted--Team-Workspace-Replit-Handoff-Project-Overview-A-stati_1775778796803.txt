@@ -1,0 +1,80 @@
+# Team Workspace — Replit Handoff
+
+## Project Overview
+A static HTML prototype of an AI-powered team workspace for UKG Bryte.
+Two self-contained HTML files — no build step, no dependencies beyond Google Fonts.
+
+---
+
+## Files
+| File | Description |
+|------|-------------|
+| `team-space.html` | Main view — Team list + Focused list view (horizontal scroll per member) |
+| `team-small-view.html` | Team Small View — bubble chart grid of all team members |
+
+---
+
+## What's Built
+
+### team-space.html
+- **Team list view** — left panel showing all team members with urgency category counts
+- **Focused list view** — right panel, horizontally scrollable per member, shows:
+  - Circular avatar + "My daily briefing" / employee name (changes on scroll)
+  - Cards grouped by urgency: Critical / Important / Heads-up / Light
+  - Cards have light tint backgrounds, colored category dot, action buttons
+  - Filter row with urgency chips + 3 icon controls (fullscreen-exit, toggle pill, 3-dot)
+- **URL param deep linking**: `?member=N` expands that member; `?member=N&urgency=TYPE` also applies urgency filter
+- **Icons in filter row** (exact Figma SVGs embedded inline):
+  - Fullscreen-exit → navigates to team-space.html (team list)
+  - Toggle pill → right segment navigates to team-small-view.html
+  - 3-dot action → no action yet
+
+### team-small-view.html
+- Bubble chart grid — each team member shown as avatar + floating urgency bubbles
+- "My team" title + filter buttons, left-aligned with card container
+- Urgency number badges sit top-right of each avatar
+- Avatar click → `team-space.html?member=N`
+- Badge / bubble click → `team-space.html?member=N&urgency=TYPE`
+
+---
+
+## Member Index (for URL params)
+| Index | Name |
+|-------|------|
+| 0 | Me (the manager) |
+| 1 | Jamie |
+| 2 | Carlos |
+| 3 | Aisha |
+| 4 | Priya |
+| 5 | Marcus |
+
+## Urgency Types (for URL params)
+`critical` | `important` | `navy` (heads-up) | `light`
+
+---
+
+## Design System
+- **Font:** DM Sans (Google Fonts)
+- **Colors:** Follows UKG Ignite DLS + Bryte AI tokens
+  - Critical: `rgba(219,112,123,0.18)` / dot `#e80d24`
+  - Important: `rgba(230,130,0,0.07)` / dot `#e68200`
+  - Heads-up (navy): `rgba(71,102,255,0.07)` / dot `#4766ff`
+  - Light: `#eef0f7` / dot `#8892B4`
+- Background: white (`#ffffff`)
+
+---
+
+## How to Run on Replit
+1. Create a new Replit — choose **Static HTML** template
+2. Upload both `.html` files
+3. Set `team-space.html` as the entry point (or open directly)
+4. Navigation between pages works automatically via relative URLs
+
+---
+
+## Possible Next Steps
+- Animate card entry on urgency filter change
+- Add real avatar images or placeholder initials fallback
+- Wire up the 3-dot action button menu
+- Mobile/responsive breakpoints
+- Add more card content / member data
